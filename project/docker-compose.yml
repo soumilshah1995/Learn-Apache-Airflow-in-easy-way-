@@ -12,11 +12,21 @@ services:
         max-size: 10m
         max-file: "3"
 
+  scheduler:
+    build: ./dockerfiles
+    restart: always
+    depends_on:
+      - postgres
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    command: scheduler
+
   webserver:
     build: ./dockerfiles
     restart: always
     depends_on:
       - postgres
+      - scheduler
     environment:
       - LOAD_EX=n
       - EXECUTOR=Local
@@ -30,6 +40,11 @@ services:
     ports:
       - "8080:8080"
     command: webserver
+    environment:
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
     healthcheck:
       test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
       interval: 30s
